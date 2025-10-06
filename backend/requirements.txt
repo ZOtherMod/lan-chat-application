@@ -1,0 +1,5 @@
+websockets==12.0
+asyncio
+requests==2.31.0
+cryptography==41.0.7
+bcrypt==4.0.1
