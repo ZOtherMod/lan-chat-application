@@ -45,11 +45,11 @@ const ServerSelection = ({ nickname, onConnect, onBack, onHostServer, connection
           if (found) {
             onConnect(found.ws_url);
           } else {
-            alert(`Server "${name}" not found. Make sure the server is running and you're on the same network.`);
+            alert(`Server "${serverName}" not found. Make sure the server is running and you're on the same network.`);
           }
         }
       } catch (error) {
-        alert(`Failed to connect to "${name}": ${error.message}`);
+        alert(`Failed to connect to "${serverName}": ${error.message}`);
       }
     }
   };
