@@ -154,7 +154,7 @@ const ServerSelection = ({ nickname, onConnect, onBack, connectionError, connect
           <p>Connect to the online chat server (accessible from anywhere)</p>
           <button 
             className="btn online-btn" 
-            onClick={() => onConnect('wss://your-server.com')}
+            onClick={() => onConnect('wss://lan-chat-application.onrender.com')}
             disabled={connecting}
           >
             Connect to Online Server
