@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
 import NicknameForm from './components/NicknameForm';
 import ServerSelection from './components/ServerSelection';
@@ -14,31 +14,7 @@ const App = () => {
   const [connectionError, setConnectionError] = useState('');
   const wsRef = useRef(null);
 
-  useEffect(() => {
-    // Listen for custom connect events from hosted server
-    const handleConnectEvent = (event) => {
-      const { url, name } = event.detail;
-      if (url && currentScreen === 'server') {
-        connectToServer(url);
-      }
-    };
-
-    window.addEventListener('connectToServer', handleConnectEvent);
-
-    return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-      window.removeEventListener('connectToServer', handleConnectEvent);
-    };
-  }, [currentScreen, connectToServer]);
-
-  const handleNicknameSubmit = (submittedNickname) => {
-    setNickname(submittedNickname);
-    setCurrentScreen('server');
-  };
-
-  const connectToServer = (url) => {
+  const connectToServer = useCallback((url) => {
     setConnectionError('');
     setServerUrl(url);
     
@@ -88,6 +64,30 @@ const App = () => {
     } catch (error) {
       setConnectionError('Invalid server URL. Please check and try again.');
     }
+  }, [nickname, currentScreen]);
+
+  useEffect(() => {
+    // Listen for custom connect events from hosted server
+    const handleConnectEvent = (event) => {
+      const { url } = event.detail;
+      if (url && currentScreen === 'server') {
+        connectToServer(url);
+      }
+    };
+
+    window.addEventListener('connectToServer', handleConnectEvent);
+
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+      window.removeEventListener('connectToServer', handleConnectEvent);
+    };
+  }, [currentScreen, connectToServer]);
+
+  const handleNicknameSubmit = (submittedNickname) => {
+    setNickname(submittedNickname);
+    setCurrentScreen('server');
   };
 
   const disconnect = () => {
