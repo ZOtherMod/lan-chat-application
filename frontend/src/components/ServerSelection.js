@@ -34,15 +34,14 @@ const ServerSelection = ({ nickname, onConnect, onBack, onHostServer, connection
 
   const handleServerNameConnect = async (e) => {
     e.preventDefault();
-    const name = serverName.trim();
-    if (name) {
+    if (serverName.trim()) {
       try {
-        const serverInfo = await discoverServerByName(name);
+        const serverInfo = await discoverServerByName(serverName.trim());
         if (serverInfo) {
           onConnect(serverInfo.ws_url);
         } else {
           // Try to discover by scanning common IPs
-          const found = await scanForServerByName(name);
+          const found = await scanForServerByName(serverName.trim());
           if (found) {
             onConnect(found.ws_url);
           } else {

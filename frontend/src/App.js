@@ -31,7 +31,7 @@ const App = () => {
       }
       window.removeEventListener('connectToServer', handleConnectEvent);
     };
-  }, [currentScreen]);
+  }, [currentScreen, connectToServer]);
 
   const handleNicknameSubmit = (submittedNickname) => {
     setNickname(submittedNickname);
