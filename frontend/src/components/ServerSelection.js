@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import config from '../config';
 
-const ServerSelection = ({ nickname, onConnect, onBack, onHostServer, connectionError, connecting }) => {
+const ServerSelection = ({ nickname, onConnect, onBack, connectionError, connecting }) => {
   const [customUrl, setCustomUrl] = useState('');
   const [showCustom, setShowCustom] = useState(false);
   const [serverName, setServerName] = useState('');
@@ -155,7 +154,7 @@ const ServerSelection = ({ nickname, onConnect, onBack, onHostServer, connection
           <p>Connect to the online chat server (accessible from anywhere)</p>
           <button 
             className="btn online-btn" 
-            onClick={() => onConnect(config.ONLINE_SERVER_URL)}
+            onClick={() => onConnect('wss://your-server.com')}
             disabled={connecting}
           >
             Connect to Online Server
@@ -353,17 +352,7 @@ const ServerSelection = ({ nickname, onConnect, onBack, onHostServer, connection
       </div>
 
       <div className="host-server-section">
-        <div className="server-option">
-          <h3>🖥️ Host Your Own Server</h3>
-          <p>Create your own chat server that others can join</p>
-          <button 
-            className="btn host-server-btn" 
-            onClick={onHostServer}
-            disabled={connecting}
-          >
-            🚀 Host Server
-          </button>
-        </div>
+
       </div>
 
       <div style={{ textAlign: 'center', marginTop: '30px' }}>

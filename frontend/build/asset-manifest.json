@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/lan-chat-application/static/css/main.d79a4a84.css",
+    "main.js": "/lan-chat-application/static/js/main.98b379ac.js",
+    "index.html": "/lan-chat-application/index.html",
+    "main.d79a4a84.css.map": "/lan-chat-application/static/css/main.d79a4a84.css.map",
+    "main.98b379ac.js.map": "/lan-chat-application/static/js/main.98b379ac.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.d79a4a84.css",
+    "static/js/main.98b379ac.js"
+  ]
+}
