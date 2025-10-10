@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import './App.css';
 import NicknameForm from './components/NicknameForm';
 import ServerSelection from './components/ServerSelection';
 import ChatRoom from './components/ChatRoom';
-import SimpleServerHosting from './components/SimpleServerHosting';
 
 const App = () => {
-  const [currentScreen, setCurrentScreen] = useState('nickname'); // 'nickname', 'server', 'chat', 'hosting'
+  const [currentScreen, setCurrentScreen] = useState('nickname'); // 'nickname', 'server', 'chat'
   const [nickname, setNickname] = useState('');
   const [ws, setWs] = useState(null);
   const [connected, setConnected] = useState(false);
@@ -66,25 +65,6 @@ const App = () => {
     }
   }, [nickname, currentScreen]);
 
-  useEffect(() => {
-    // Listen for custom connect events from hosted server
-    const handleConnectEvent = (event) => {
-      const { url } = event.detail;
-      if (url && currentScreen === 'server') {
-        connectToServer(url);
-      }
-    };
-
-    window.addEventListener('connectToServer', handleConnectEvent);
-
-    return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-      window.removeEventListener('connectToServer', handleConnectEvent);
-    };
-  }, [currentScreen, connectToServer]);
-
   const handleNicknameSubmit = (submittedNickname) => {
     setNickname(submittedNickname);
     setCurrentScreen('server');
@@ -126,15 +106,8 @@ const App = () => {
             nickname={nickname}
             onConnect={connectToServer}
             onBack={goBack}
-            onHostServer={() => setCurrentScreen('hosting')}
             connectionError={connectionError}
             connecting={connected && currentScreen === 'server'}
-          />
-        )}
-
-        {currentScreen === 'hosting' && (
-          <SimpleServerHosting
-            onBack={() => setCurrentScreen('server')}
           />
         )}
 

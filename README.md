@@ -1,11 +1,11 @@
-# 🌐 Online Chat Application
-A secure, real-time chat application accessible from anywhere on the internet! Features end-to-end encryption and can be deployed to the cloud for global access. Built with Python WebSocket backend and React frontend.
+# Online Chat Application
+A secure, real-time chat application accessible from anywhere on the internet. Features end-to-end encryption and can be deployed to the cloud for global access. Built with Python WebSocket backend and React frontend.
 
-## 🚀 **NEW: Now Available Online!**
-- **🌍 Global Access**: Connect from anywhere in the world
-- **☁️ Cloud Deployment**: Easy deployment to Railway, Render, or Heroku  
-- **🔒 Production Security**: Enhanced security for public internet access
-- **📱 Cross-Platform**: Works on any device with a web browser
+## Available Online
+- Global Access: Connect from anywhere in the world
+- Cloud Deployment: Easy deployment to Railway, Render, or Heroku  
+- Production Security: Enhanced security for public internet access
+- Cross-Platform: Works on any device with a web browser
 
 ## Features
 
@@ -30,18 +30,18 @@ A secure, real-time chat application accessible from anywhere on the internet! F
 - **Secure Sessions**: Cryptographically secure session management
 - **Message Integrity**: HMAC signatures for tamper detection
 
-## 🌐 Deployment Options
+## Deployment Options
 
-### **Option 1: Online Deployment (Recommended)**
+### Option 1: Online Deployment (Recommended)
 Deploy your chat server to the cloud for global access:
 
-1. **Deploy Backend**: Use Railway, Render, or Heroku (see [DEPLOYMENT.md](DEPLOYMENT.md))
-2. **Update Config**: Set your server URL in `frontend/src/config.js`
-3. **Access Globally**: Anyone can use your chat via GitHub Pages!
+1. Deploy Backend: Use Railway, Render, or Heroku (see [DEPLOYMENT.md](DEPLOYMENT.md))
+2. Update Config: Set your server URL in `frontend/src/config.js`
+3. Access Globally: Anyone can use your chat via GitHub Pages
 
-**Live Demo**: Try the frontend at `https://zothermod.github.io/lan-chat-application`
+Live Demo: Try the frontend at `https://zothermod.github.io/lan-chat-application`
 
-### **Option 2: Local Network (LAN) Only**
+### Option 2: Local Network (LAN) Only
 Run the server locally for same-network access only.
 
 ## Architecture
