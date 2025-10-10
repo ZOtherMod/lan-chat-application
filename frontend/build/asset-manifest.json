@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/lan-chat-application/static/css/main.d79a4a84.css",
-    "main.js": "/lan-chat-application/static/js/main.2ffd1a24.js",
+    "main.js": "/lan-chat-application/static/js/main.1007e6d4.js",
     "index.html": "/lan-chat-application/index.html",
     "main.d79a4a84.css.map": "/lan-chat-application/static/css/main.d79a4a84.css.map",
-    "main.2ffd1a24.js.map": "/lan-chat-application/static/js/main.2ffd1a24.js.map"
+    "main.1007e6d4.js.map": "/lan-chat-application/static/js/main.1007e6d4.js.map"
   },
   "entrypoints": [
     "static/css/main.d79a4a84.css",
-    "static/js/main.2ffd1a24.js"
+    "static/js/main.1007e6d4.js"
   ]
 }

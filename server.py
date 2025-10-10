@@ -9,6 +9,7 @@ import websockets
 import json
 import logging
 import socket
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -44,17 +45,31 @@ class ChatServer:
                 await self.set_nickname(client_id, data.get('nickname'))
             elif message_type == 'chat_message':
                 await self.broadcast_message(client_id, data.get('content'))
+            elif message_type == 'get_users':
+                await self.send_user_list(client_id)
                 
         except json.JSONDecodeError:
             logger.error(f"Invalid JSON from client {client_id}")
 
     async def set_nickname(self, client_id, nickname):
         if client_id in self.clients:
+            was_new_user = not self.clients[client_id]['nickname']
             self.clients[client_id]['nickname'] = nickname
+            
             await self.send_to_client(client_id, {
                 'type': 'nickname_set',
                 'nickname': nickname
             })
+            
+            # Send join notification to all users if this is a new user
+            if was_new_user:
+                join_message = {
+                    'type': 'user_joined',
+                    'nickname': nickname,
+                    'timestamp': asyncio.get_event_loop().time()
+                }
+                await self.broadcast_to_all(join_message)
+            
             await self.broadcast_user_list()
 
     async def broadcast_message(self, sender_id, message):
@@ -74,6 +89,10 @@ class ChatServer:
             if self.clients[client_id]['room'] == room:
                 await self.send_to_client(client_id, chat_message)
 
+    async def broadcast_to_all(self, message):
+        for client_id in list(self.clients.keys()):
+            await self.send_to_client(client_id, message)
+
     async def broadcast_user_list(self):
         users = [client['nickname'] for client in self.clients.values() if client['nickname']]
         user_list_message = {
@@ -91,9 +110,27 @@ class ChatServer:
             except websockets.exceptions.ConnectionClosed:
                 await self.remove_client(client_id)
 
+    async def send_user_list(self, client_id):
+        users = [client['nickname'] for client in self.clients.values() if client['nickname']]
+        await self.send_to_client(client_id, {
+            'type': 'user_list',
+            'users': users
+        })
+
     async def remove_client(self, client_id):
         if client_id in self.clients:
+            nickname = self.clients[client_id]['nickname']
             del self.clients[client_id]
+            
+            # Send leave notification if user had a nickname
+            if nickname:
+                leave_message = {
+                    'type': 'user_left',
+                    'nickname': nickname,
+                    'timestamp': asyncio.get_event_loop().time()
+                }
+                await self.broadcast_to_all(leave_message)
+            
             await self.broadcast_user_list()
 
 def get_local_ip():

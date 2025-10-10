@@ -120,7 +120,8 @@ const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
 
     ws.addEventListener('message', handleMessage);
     
-    // Request user list
+    // Set nickname and request user list
+    ws.send(JSON.stringify({ type: 'set_nickname', nickname: nickname }));
     ws.send(JSON.stringify({ type: 'get_users' }));
 
     return () => {
