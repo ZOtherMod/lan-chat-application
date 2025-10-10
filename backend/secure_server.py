@@ -141,9 +141,9 @@ class SecureServerManager:
         dangerous_patterns = [
             '<script',
             'javascript:',
-            'on\w+\s*=',
-            'eval\s*\(',
-            'document\.',
+            r'on\w+\s*=',
+            r'eval\s*\(',
+            r'document\.',
         ]
         
         data_lower = data.lower()

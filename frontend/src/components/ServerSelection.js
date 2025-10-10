@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import config from '../config';
 
-const ServerSelection = ({ nickname, onConnect, onBack, connectionError, connecting }) => {
+const ServerSelection = ({ nickname, onConnect, onBack, onHostServer, connectionError, connecting }) => {
   const [customUrl, setCustomUrl] = useState('');
   const [showCustom, setShowCustom] = useState(false);
   const [serverName, setServerName] = useState('');
@@ -56,7 +57,6 @@ const ServerSelection = ({ nickname, onConnect, onBack, connectionError, connect
 
   const discoverServerByName = async (name) => {
     // Try to discover server by hostname
-    const commonPorts = [8766]; // Discovery port
     const baseIps = ['192.168.1', '192.168.0', '10.0.0', '172.16.0'];
     
     for (const baseIp of baseIps) {
@@ -92,7 +92,6 @@ const ServerSelection = ({ nickname, onConnect, onBack, connectionError, connect
     setScanning(true);
     setDiscoveredServers([]);
     
-    const found = [];
     const baseIps = ['192.168.1', '192.168.0', '10.0.0', '172.16.0'];
     
     const promises = [];
@@ -153,7 +152,19 @@ const ServerSelection = ({ nickname, onConnect, onBack, connectionError, connect
 
       <div className="server-options">
         <div className="server-option">
-          <h3>🏠 Connect to Local Server</h3>
+          <h3>� Connect to Online Server</h3>
+          <p>Connect to the online chat server (accessible from anywhere)</p>
+          <button 
+            className="btn online-btn" 
+            onClick={() => onConnect(config.ONLINE_SERVER_URL)}
+            disabled={connecting}
+          >
+            Connect to Online Server
+          </button>
+        </div>
+
+        <div className="server-option">
+          <h3>�🏠 Connect to Local Server</h3>
           <p>Connect to a server running on this computer (localhost:8765)</p>
           <button 
             className="btn" 
@@ -338,6 +349,20 @@ const ServerSelection = ({ nickname, onConnect, onBack, connectionError, connect
             disabled={connecting}
           >
             View Instructions
+          </button>
+        </div>
+      </div>
+
+      <div className="host-server-section">
+        <div className="server-option">
+          <h3>🖥️ Host Your Own Server</h3>
+          <p>Create your own chat server that others can join</p>
+          <button 
+            className="btn host-server-btn" 
+            onClick={onHostServer}
+            disabled={connecting}
+          >
+            🚀 Host Server
           </button>
         </div>
       </div>

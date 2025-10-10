@@ -358,41 +358,64 @@ def get_local_ip():
 async def main():
     server = ChatServer()
     host = "0.0.0.0"  # Listen on all interfaces
-    ws_port = 8765
-    http_port = 8766
     
-    # Get server name (computer hostname)
-    server_name = socket.gethostname()
-    local_ip = get_local_ip()
+    # Use environment variables for cloud deployment
+    ws_port = int(os.environ.get("PORT", 8765))  # Cloud platforms use PORT env var
+    http_port = int(os.environ.get("HTTP_PORT", ws_port + 1))
     
-    # Start server discovery service
-    discovery = ServerDiscovery(server_name, ws_port, http_port)
-    discovery_started = discovery.start_discovery_server()
+    # Check if running in cloud environment
+    is_cloud = os.environ.get("DYNO") or os.environ.get("RENDER") or os.environ.get("RAILWAY_ENVIRONMENT")
     
-    print("=" * 60)
-    print("🚀 LAN Chat Server Starting...")
-    print("=" * 60)
-    print(f"📡 Server Name: {server_name}")
-    print(f"🖥️  Computer: {platform.system()} - {socket.gethostname()}")
-    print(f"🌐 IP Address: {local_ip}")
-    print("=" * 60)
-    print("🔗 Connection Options:")
-    print(f"  • WebSocket: ws://{local_ip}:{ws_port}")
-    if discovery_started:
-        print(f"  • Discovery: http://{local_ip}:{http_port}/discover")
-        print(f"  • Browser: Connect using server name '{server_name}'")
-    print("=" * 60)
-    
-    if discovery_started:
-        print("✅ Server discovery enabled - clients can find server by name!")
-    else:
-        print("⚠️  Server discovery failed - clients will need IP address")
+    if not is_cloud:
+        # Local deployment - keep existing discovery functionality
+        server_name = socket.gethostname()
+        local_ip = get_local_ip()
         
+        # Start server discovery service
+        discovery = ServerDiscovery(server_name, ws_port, http_port)
+        discovery_started = discovery.start_discovery_server()
+    else:
+        # Cloud deployment - disable local discovery
+        server_name = os.environ.get("SERVER_NAME", "OnlineChatServer")
+        discovery_started = False
+    
     print("=" * 60)
-    print("📋 Share this with others:")
-    print(f"   Server Name: {server_name}")
-    print(f"   IP Address: {local_ip}:{ws_port}")
+    if is_cloud:
+        print("🌐 ONLINE Chat Server Starting...")
+        print("=" * 60)
+        print(f"📡 Server Name: {server_name}")
+        print(f"☁️  Environment: Cloud Deployment")
+        print(f"� Port: {ws_port}")
+        print("=" * 60)
+        print("✅ Server is ONLINE and accessible from anywhere!")
+        print("🔒 Enhanced security enabled for public access")
+    else:
+        print("�🚀 LAN Chat Server Starting...")
+        print("=" * 60)
+        print(f"📡 Server Name: {server_name}")
+        print(f"🖥️  Computer: {platform.system()} - {socket.gethostname()}")
+        print(f"🌐 IP Address: {local_ip}")
+        print("=" * 60)
+        print("🔗 Connection Options:")
+        print(f"  • WebSocket: ws://{local_ip}:{ws_port}")
+        if discovery_started:
+            print(f"  • Discovery: http://{local_ip}:{http_port}/discover")
+            print(f"  • Browser: Connect using server name '{server_name}'")
     print("=" * 60)
+    
+    if is_cloud:
+        print("📋 Share this server URL with others to connect!")
+    else:
+        if discovery_started:
+            print("✅ Server discovery enabled - clients can find server by name!")
+        else:
+            print("⚠️  Server discovery failed - clients will need IP address")
+            
+        print("=" * 60)
+        print("📋 Share this with others:")
+        print(f"   Server Name: {server_name}")
+        print(f"   IP Address: {local_ip}:{ws_port}")
+        print("=" * 60)
     print("Press Ctrl+C to stop the server")
     print("=" * 60)
     

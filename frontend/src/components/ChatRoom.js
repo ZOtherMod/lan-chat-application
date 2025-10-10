@@ -8,7 +8,6 @@ const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
   const [encryptionEnabled, setEncryptionEnabled] = useState(false);
   const [encryptionPassword, setEncryptionPassword] = useState('');
   const [showEncryptionSetup, setShowEncryptionSetup] = useState(false);
-  const [roomKey, setRoomKey] = useState('');
   const messagesEndRef = useRef(null);
   const secureMessaging = useRef(new SecureMessaging());
 
@@ -103,7 +102,7 @@ const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
           break;
           
         case 'room_key':
-          setRoomKey(data.key);
+          // Room key received but not needed for display
           break;
           
         case 'error':
@@ -127,7 +126,7 @@ const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
     return () => {
       ws.removeEventListener('message', handleMessage);
     };
-  }, [ws, nickname]);
+  }, [ws, nickname, encryptionEnabled, encryptionPassword]);
 
   const sendMessage = (e) => {
     e.preventDefault();
