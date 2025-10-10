@@ -65,7 +65,7 @@ class ChatServer:
         chat_message = {
             'type': 'chat_message',
             'nickname': sender['nickname'],
-            'message': message,
+            'content': message,
             'timestamp': asyncio.get_event_loop().time()
         }
         
