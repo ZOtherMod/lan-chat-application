@@ -43,7 +43,7 @@ class ChatServer:
             if message_type == 'set_nickname':
                 await self.set_nickname(client_id, data.get('nickname'))
             elif message_type == 'chat_message':
-                await self.broadcast_message(client_id, data.get('message'))
+                await self.broadcast_message(client_id, data.get('content'))
                 
         except json.JSONDecodeError:
             logger.error(f"Invalid JSON from client {client_id}")

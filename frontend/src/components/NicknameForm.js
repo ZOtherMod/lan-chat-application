@@ -15,7 +15,7 @@ const NicknameForm = ({ onSubmit }) => {
 
   return (
     <div className="form-container">
-      <h2>👋 Welcome to LAN Chat!</h2>
+      <h2>👋 Welcome to Online Chat!</h2>
       <p style={{ color: '#666', marginBottom: '30px' }}>
         Choose a nickname to get started
       </p>
