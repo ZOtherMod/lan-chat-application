@@ -47,6 +47,16 @@ class ChatServer:
                 await self.broadcast_message(client_id, data.get('content'))
             elif message_type == 'get_users':
                 await self.send_user_list(client_id)
+            elif message_type == 'voice_join':
+                await self.handle_voice_join(client_id, data.get('nickname'))
+            elif message_type == 'voice_leave':
+                await self.handle_voice_leave(client_id, data.get('nickname'))
+            elif message_type == 'voice_offer':
+                await self.relay_voice_message(client_id, data)
+            elif message_type == 'voice_answer':
+                await self.relay_voice_message(client_id, data)
+            elif message_type == 'voice_ice_candidate':
+                await self.relay_voice_message(client_id, data)
                 
         except json.JSONDecodeError:
             logger.error(f"Invalid JSON from client {client_id}")
@@ -88,6 +98,52 @@ class ChatServer:
         for client_id in list(self.clients.keys()):
             if self.clients[client_id]['room'] == room:
                 await self.send_to_client(client_id, chat_message)
+
+    async def handle_voice_join(self, client_id, nickname):
+        if client_id in self.clients:
+            # Notify other users that someone joined voice chat
+            join_message = {
+                'type': 'voice_user_joined',
+                'user': nickname
+            }
+            
+            # Send to all other clients in the same room
+            room = self.clients[client_id]['room']
+            for other_client_id in list(self.clients.keys()):
+                if (other_client_id != client_id and 
+                    self.clients[other_client_id]['room'] == room):
+                    await self.send_to_client(other_client_id, join_message)
+
+    async def handle_voice_leave(self, client_id, nickname):
+        if client_id in self.clients:
+            # Notify other users that someone left voice chat
+            leave_message = {
+                'type': 'voice_user_left',
+                'user': nickname
+            }
+            
+            # Send to all other clients in the same room
+            room = self.clients[client_id]['room']
+            for other_client_id in list(self.clients.keys()):
+                if (other_client_id != client_id and 
+                    self.clients[other_client_id]['room'] == room):
+                    await self.send_to_client(other_client_id, leave_message)
+
+    async def relay_voice_message(self, sender_id, data):
+        # Relay WebRTC signaling messages between users
+        target_nickname = data.get('to')
+        if not target_nickname:
+            return
+            
+        # Find the target client
+        target_client_id = None
+        for client_id, client in self.clients.items():
+            if client['nickname'] == target_nickname:
+                target_client_id = client_id
+                break
+        
+        if target_client_id:
+            await self.send_to_client(target_client_id, data)
 
     async def broadcast_to_all(self, message):
         for client_id in list(self.clients.keys()):

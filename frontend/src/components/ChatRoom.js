@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SecureMessaging from '../utils/SecureMessaging';
+import VoiceChat from './VoiceChat';
 
 const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
   const [messages, setMessages] = useState([]);
@@ -8,6 +9,7 @@ const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
   const [encryptionEnabled, setEncryptionEnabled] = useState(false);
   const [encryptionPassword, setEncryptionPassword] = useState('');
   const [showEncryptionSetup, setShowEncryptionSetup] = useState(false);
+  const [showVoiceChat, setShowVoiceChat] = useState(false);
   const messagesEndRef = useRef(null);
   const secureMessaging = useRef(new SecureMessaging());
 
@@ -221,6 +223,13 @@ const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
           >
             {encryptionEnabled ? '🔒' : '🔓'}
           </button>
+          <button 
+            className="btn btn-voice" 
+            onClick={() => setShowVoiceChat(true)}
+            title="Join voice chat"
+          >
+            🎤
+          </button>
           <button className="btn btn-secondary" onClick={onDisconnect}>
             Disconnect
           </button>
@@ -305,6 +314,14 @@ const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
           </ul>
         </div>
       </div>
+      
+      <VoiceChat 
+        ws={ws}
+        nickname={nickname}
+        users={users}
+        isOpen={showVoiceChat}
+        onClose={() => setShowVoiceChat(false)}
+      />
     </div>
   );
 };
@@ -381,6 +398,6 @@ const EncryptionSetup = ({ onEnable, onDisable, encryptionEnabled, onClose }) =>
       </div>
     </div>
   );
-};
+}
 
 export default ChatRoom;
