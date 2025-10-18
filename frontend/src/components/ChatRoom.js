@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SecureMessaging from '../utils/SecureMessaging';
-import VoiceChat from './VoiceChat';
+// import VoiceChat from './VoiceChat';
 
 const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
   const [messages, setMessages] = useState([]);
@@ -210,9 +210,20 @@ const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
 
   return (
     <div className="chat-container">
+      {/* DEBUG: This should always show */}
+      <div style={{
+        background: 'red', 
+        color: 'white', 
+        padding: '10px', 
+        textAlign: 'center',
+        fontSize: '20px',
+        fontWeight: 'bold'
+      }}>
+        🚨 DEBUG: ChatRoom component is rendering! Voice button should be below.
+      </div>
       <div className="chat-header">
         <div>
-          <h2>💬 Chat Room</h2>
+          <h2>💬 Chat Room - BUILD: {Date.now()}</h2>
           <div className="chat-info">
             Connected to {getServerAddress(serverUrl)} as {nickname}
             {encryptionEnabled && <span className="encryption-status"> 🔒 Encrypted</span>}
@@ -225,6 +236,9 @@ const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
             title={encryptionEnabled ? "Encryption enabled" : "Enable encryption"}
           >
             {encryptionEnabled ? '🔒' : '🔓'}
+          </button>
+          <button style={{background: 'lime', color: 'black', padding: '10px'}}>
+            DEBUG TEST
           </button>
           <button 
             className="btn btn-voice" 
@@ -329,13 +343,23 @@ const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
         </div>
       </div>
       
-      <VoiceChat 
-        ws={ws}
-        nickname={nickname}
-        users={users}
-        isOpen={showVoiceChat}
-        onClose={() => setShowVoiceChat(false)}
-      />
+      {/* Temporarily disabled VoiceChat to debug button issue */}
+      {showVoiceChat && (
+        <div style={{
+          position: 'fixed', 
+          top: '50%', 
+          left: '50%', 
+          transform: 'translate(-50%, -50%)',
+          background: 'white',
+          padding: '20px',
+          border: '2px solid red',
+          zIndex: 1000
+        }}>
+          <h3>Voice Chat Debug</h3>
+          <p>Voice chat button clicked! Component would render here.</p>
+          <button onClick={() => setShowVoiceChat(false)}>Close</button>
+        </div>
+      )}
     </div>
   );
 };
