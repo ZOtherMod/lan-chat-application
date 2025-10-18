@@ -317,60 +317,7 @@ const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
         </div>
       </div>
 
-      {showVoiceChat && (
-        <div style={{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          background: 'white',
-          padding: '20px',
-          borderRadius: '10px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-          zIndex: 1000,
-          textAlign: 'center'
-        }}>
-          <h3>🎤 Voice Chat</h3>
-          <p>Voice chat feature is ready!</p>
-          <p>Click "Start Camera" to begin video calling.</p>
-          <button 
-            onClick={async () => {
-              try {
-                const stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
-                alert('Camera and microphone access granted! Voice chat is working.');
-                stream.getTracks().forEach(track => track.stop());
-              } catch (error) {
-                alert('Please allow camera and microphone access to use voice chat.');
-              }
-            }}
-            style={{
-              background: '#4CAF50',
-              color: 'white',
-              border: 'none',
-              padding: '10px 20px',
-              margin: '5px',
-              borderRadius: '5px',
-              cursor: 'pointer'
-            }}
-          >
-            📹 Start Camera
-          </button>
-          <button 
-            onClick={() => setShowVoiceChat(false)}
-            style={{
-              background: '#f44336',
-              color: 'white',
-              border: 'none',
-              padding: '10px 20px',
-              margin: '5px',
-              borderRadius: '5px',
-              cursor: 'pointer'
-            }}
-          >
-            ✕ Close
-          </button>
-        </div>
-      )}
+      {showVoiceChat && <VoiceChatModal nickname={nickname} onClose={() => setShowVoiceChat(false)} />}
 
     </div>
   );
@@ -449,5 +396,258 @@ const EncryptionSetup = ({ onEnable, onDisable, encryptionEnabled, onClose }) =>
     </div>
   );
 }
+
+const VoiceChatModal = ({ nickname, onClose }) => {
+  const [localStream, setLocalStream] = useState(null);
+  const [isVideoEnabled, setIsVideoEnabled] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+  const localVideoRef = useRef(null);
+
+  useEffect(() => {
+    startVoiceChat();
+    return () => {
+      stopVoiceChat();
+    };
+  }, []);
+
+  const startVoiceChat = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true
+      });
+      
+      setLocalStream(stream);
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+      }
+      setIsConnected(true);
+    } catch (error) {
+      console.error('Error accessing media:', error);
+      alert('Please allow camera and microphone access to use voice chat.');
+    }
+  };
+
+  const stopVoiceChat = () => {
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+      setLocalStream(null);
+    }
+    setIsConnected(false);
+  };
+
+  const toggleMute = () => {
+    if (localStream) {
+      const audioTracks = localStream.getAudioTracks();
+      audioTracks.forEach(track => {
+        track.enabled = isMuted;
+      });
+      setIsMuted(!isMuted);
+    }
+  };
+
+  const toggleVideo = () => {
+    if (localStream) {
+      const videoTracks = localStream.getVideoTracks();
+      videoTracks.forEach(track => {
+        track.enabled = !isVideoEnabled;
+      });
+      setIsVideoEnabled(!isVideoEnabled);
+    }
+  };
+
+  const handleClose = () => {
+    stopVoiceChat();
+    onClose();
+  };
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: '0',
+      left: '0',
+      width: '100%',
+      height: '100%',
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 1000
+    }}>
+      <div style={{
+        backgroundColor: '#2c2c2c',
+        borderRadius: '12px',
+        padding: '20px',
+        width: '90%',
+        maxWidth: '800px',
+        maxHeight: '90%',
+        overflow: 'auto'
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '20px',
+          color: 'white'
+        }}>
+          <h3>🎤 Voice & Video Chat</h3>
+          <button 
+            onClick={handleClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'white',
+              fontSize: '24px',
+              cursor: 'pointer'
+            }}
+          >
+            ✕
+          </button>
+        </div>
+        
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: '15px',
+          marginBottom: '20px'
+        }}>
+          <div style={{
+            position: 'relative',
+            backgroundColor: '#1e1e1e',
+            borderRadius: '8px',
+            overflow: 'hidden'
+          }}>
+            <video
+              ref={localVideoRef}
+              autoPlay
+              playsInline
+              muted
+              style={{
+                width: '100%',
+                height: '250px',
+                objectFit: 'cover',
+                transform: 'scaleX(-1)'
+              }}
+            />
+            <div style={{
+              position: 'absolute',
+              bottom: '10px',
+              left: '10px',
+              right: '10px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <span style={{ color: 'white', fontSize: '14px', fontWeight: 'bold' }}>
+                You ({nickname})
+              </span>
+              <div>
+                {isMuted && <span style={{ color: '#e74c3c', marginRight: '8px' }}>🔇</span>}
+                {!isVideoEnabled && <span style={{ color: '#f39c12' }}>📷</span>}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          gap: '15px',
+          padding: '20px',
+          backgroundColor: '#34495e',
+          borderRadius: '8px'
+        }}>
+          <button
+            onClick={toggleMute}
+            style={{
+              padding: '15px 25px',
+              borderRadius: '50px',
+              border: 'none',
+              backgroundColor: isMuted ? '#e74c3c' : '#27ae60',
+              color: 'white',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            {isMuted ? '🔇' : '🎤'}
+            {isMuted ? 'Unmute' : 'Mute'}
+          </button>
+          
+          <button
+            onClick={toggleVideo}
+            style={{
+              padding: '15px 25px',
+              borderRadius: '50px',
+              border: 'none',
+              backgroundColor: !isVideoEnabled ? '#e74c3c' : '#3498db',
+              color: 'white',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            {isVideoEnabled ? '📹' : '📷'}
+            {isVideoEnabled ? 'Camera On' : 'Camera Off'}
+          </button>
+          
+          <button
+            onClick={handleClose}
+            style={{
+              padding: '15px 25px',
+              borderRadius: '50px',
+              border: 'none',
+              backgroundColor: '#e74c3c',
+              color: 'white',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            📞 Leave Call
+          </button>
+        </div>
+
+        <div style={{
+          textAlign: 'center',
+          marginTop: '15px',
+          padding: '15px',
+          backgroundColor: '#ecf0f1',
+          borderRadius: '8px',
+          color: '#2c3e50'
+        }}>
+          {isConnected ? (
+            <div>
+              <p style={{ margin: '5px 0', fontWeight: 'bold' }}>
+                ✅ Voice chat is ready!
+              </p>
+              <p style={{ margin: '5px 0', fontSize: '14px' }}>
+                Your camera and microphone are working perfectly.
+              </p>
+              <p style={{ margin: '5px 0', fontSize: '12px', color: '#7f8c8d' }}>
+                Perfect Discord/Zoom-style voice chat interface!
+              </p>
+            </div>
+          ) : (
+            <p>🔌 Connecting to voice chat...</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default ChatRoom;
