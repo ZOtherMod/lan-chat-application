@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import SecureMessaging from '../utils/SecureMessaging';
 // import VoiceChat from './VoiceChat';
 
@@ -404,13 +404,6 @@ const VoiceChatModal = ({ nickname, onClose }) => {
   const [isConnected, setIsConnected] = useState(false);
   const localVideoRef = useRef(null);
 
-  useEffect(() => {
-    startVoiceChat();
-    return () => {
-      stopVoiceChat();
-    };
-  }, []);
-
   const startVoiceChat = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -429,13 +422,13 @@ const VoiceChatModal = ({ nickname, onClose }) => {
     }
   };
 
-  const stopVoiceChat = () => {
+  const stopVoiceChat = useCallback(() => {
     if (localStream) {
       localStream.getTracks().forEach(track => track.stop());
       setLocalStream(null);
     }
     setIsConnected(false);
-  };
+  }, [localStream]);
 
   const toggleMute = () => {
     if (localStream) {
@@ -461,6 +454,13 @@ const VoiceChatModal = ({ nickname, onClose }) => {
     stopVoiceChat();
     onClose();
   };
+
+  useEffect(() => {
+    startVoiceChat();
+    return () => {
+      stopVoiceChat();
+    };
+  }, [stopVoiceChat]);
 
   return (
     <div style={{
