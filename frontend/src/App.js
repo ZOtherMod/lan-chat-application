@@ -92,8 +92,8 @@ const App = () => {
   return (
     <div className="App">
       <header className="App-header">
-        <h1>🌐 Online Chat - UPDATED {new Date().toLocaleTimeString()}</h1>
-        <p>Connect and chat with friends from anywhere! Version: {Date.now()}</p>
+        <h1>🌐 Online Chat</h1>
+        <p>Connect and chat with friends from anywhere!</p>
       </header>
 
       <main className="App-main">

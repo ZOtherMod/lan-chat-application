@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SecureMessaging from '../utils/SecureMessaging';
-// import VoiceChat from './VoiceChat';
+import VoiceChat from './VoiceChat';
 
 const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
   const [messages, setMessages] = useState([]);
@@ -17,8 +17,7 @@ const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Debug: Log when component renders
-  console.log('ChatRoom component rendered, showVoiceChat:', showVoiceChat);
+
 
   useEffect(() => {
     scrollToBottom();
@@ -210,20 +209,9 @@ const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
 
   return (
     <div className="chat-container">
-      {/* DEBUG: This should always show */}
-      <div style={{
-        background: 'red', 
-        color: 'white', 
-        padding: '10px', 
-        textAlign: 'center',
-        fontSize: '20px',
-        fontWeight: 'bold'
-      }}>
-        🚨 DEBUG: ChatRoom component is rendering! Voice button should be below.
-      </div>
       <div className="chat-header">
         <div>
-          <h2>💬 Chat Room - BUILD: {Date.now()}</h2>
+          <h2>💬 Chat Room</h2>
           <div className="chat-info">
             Connected to {getServerAddress(serverUrl)} as {nickname}
             {encryptionEnabled && <span className="encryption-status"> 🔒 Encrypted</span>}
@@ -237,26 +225,12 @@ const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
           >
             {encryptionEnabled ? '🔒' : '🔓'}
           </button>
-          <button style={{background: 'lime', color: 'black', padding: '10px'}}>
-            DEBUG TEST
-          </button>
           <button 
             className="btn btn-voice" 
-            onClick={() => {
-              console.log('Voice chat button clicked!');
-              setShowVoiceChat(true);
-            }}
+            onClick={() => setShowVoiceChat(true)}
             title="Join voice chat"
-            style={{
-              backgroundColor: '#ff0000', 
-              color: 'white', 
-              fontWeight: 'bold',
-              border: '3px solid #000',
-              fontSize: '14px',
-              padding: '10px 15px'
-            }}
           >
-            🎤 VOICE CHAT
+            🎤 Voice Chat
           </button>
           <button className="btn btn-secondary" onClick={onDisconnect}>
             Disconnect
@@ -343,22 +317,12 @@ const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
         </div>
       </div>
       
-      {/* Temporarily disabled VoiceChat to debug button issue */}
       {showVoiceChat && (
-        <div style={{
-          position: 'fixed', 
-          top: '50%', 
-          left: '50%', 
-          transform: 'translate(-50%, -50%)',
-          background: 'white',
-          padding: '20px',
-          border: '2px solid red',
-          zIndex: 1000
-        }}>
-          <h3>Voice Chat Debug</h3>
-          <p>Voice chat button clicked! Component would render here.</p>
-          <button onClick={() => setShowVoiceChat(false)}>Close</button>
-        </div>
+        <VoiceChat 
+          ws={ws} 
+          nickname={nickname} 
+          onClose={() => setShowVoiceChat(false)} 
+        />
       )}
     </div>
   );
