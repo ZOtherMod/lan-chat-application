@@ -17,6 +17,9 @@ const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // Debug: Log when component renders
+  console.log('ChatRoom component rendered, showVoiceChat:', showVoiceChat);
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
@@ -225,11 +228,21 @@ const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
           </button>
           <button 
             className="btn btn-voice" 
-            onClick={() => setShowVoiceChat(true)}
+            onClick={() => {
+              console.log('Voice chat button clicked!');
+              setShowVoiceChat(true);
+            }}
             title="Join voice chat"
-            style={{backgroundColor: '#ff6b6b', color: 'white', fontWeight: 'bold'}}
+            style={{
+              backgroundColor: '#ff0000', 
+              color: 'white', 
+              fontWeight: 'bold',
+              border: '3px solid #000',
+              fontSize: '14px',
+              padding: '10px 15px'
+            }}
           >
-            🎤 Voice
+            🎤 VOICE CHAT
           </button>
           <button className="btn btn-secondary" onClick={onDisconnect}>
             Disconnect
