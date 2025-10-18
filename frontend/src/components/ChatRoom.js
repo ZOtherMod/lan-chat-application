@@ -227,8 +227,9 @@ const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
             className="btn btn-voice" 
             onClick={() => setShowVoiceChat(true)}
             title="Join voice chat"
+            style={{backgroundColor: '#ff6b6b', color: 'white', fontWeight: 'bold'}}
           >
-            🎤
+            🎤 Voice
           </button>
           <button className="btn btn-secondary" onClick={onDisconnect}>
             Disconnect
