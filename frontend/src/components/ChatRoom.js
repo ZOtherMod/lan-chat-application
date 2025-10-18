@@ -399,54 +399,99 @@ const EncryptionSetup = ({ onEnable, onDisable, encryptionEnabled, onClose }) =>
 
 const VoiceChatModal = ({ nickname, onClose }) => {
   const [localStream, setLocalStream] = useState(null);
-  const [isVideoEnabled, setIsVideoEnabled] = useState(true);
+  const [isVideoEnabled, setIsVideoEnabled] = useState(false); // Default camera OFF
   const [isMuted, setIsMuted] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+  const [permissionsGranted, setPermissionsGranted] = useState(false);
   const localVideoRef = useRef(null);
 
   const startVoiceChat = async () => {
     try {
+      // Start with audio only, no video by default
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
+        video: false,
         audio: true
       });
       
       setLocalStream(stream);
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-      }
       setIsConnected(true);
+      setPermissionsGranted(true);
     } catch (error) {
-      console.error('Error accessing media:', error);
-      alert('Please allow camera and microphone access to use voice chat.');
+      console.error('Error accessing microphone:', error);
+      alert('Please allow microphone access to use voice chat.');
     }
   };
 
   const stopVoiceChat = useCallback(() => {
     if (localStream) {
       localStream.getTracks().forEach(track => track.stop());
-      setLocalStream(null);
     }
+    setLocalStream(null);
     setIsConnected(false);
+    setPermissionsGranted(false);
+    setIsVideoEnabled(false);
+    setIsMuted(false);
   }, [localStream]);
 
   const toggleMute = () => {
     if (localStream) {
       const audioTracks = localStream.getAudioTracks();
       audioTracks.forEach(track => {
-        track.enabled = isMuted;
+        track.enabled = isMuted; // If currently muted, enable it
       });
       setIsMuted(!isMuted);
     }
   };
 
-  const toggleVideo = () => {
-    if (localStream) {
-      const videoTracks = localStream.getVideoTracks();
-      videoTracks.forEach(track => {
-        track.enabled = !isVideoEnabled;
-      });
-      setIsVideoEnabled(!isVideoEnabled);
+  const toggleVideo = async () => {
+    if (!isVideoEnabled) {
+      // Request camera permission and add video track
+      try {
+        const videoStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false
+        });
+        
+        // Add video track to existing stream
+        if (localStream) {
+          const videoTrack = videoStream.getVideoTracks()[0];
+          localStream.addTrack(videoTrack);
+          
+          // Update video element
+          if (localVideoRef.current) {
+            localVideoRef.current.srcObject = localStream;
+          }
+        } else {
+          // If no stream exists, create new one with video
+          const fullStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true
+          });
+          setLocalStream(fullStream);
+          if (localVideoRef.current) {
+            localVideoRef.current.srcObject = fullStream;
+          }
+        }
+        setIsVideoEnabled(true);
+      } catch (error) {
+        console.error('Error accessing camera:', error);
+        alert('Please allow camera access to enable video.');
+      }
+    } else {
+      // Disable video
+      if (localStream) {
+        const videoTracks = localStream.getVideoTracks();
+        videoTracks.forEach(track => {
+          track.stop();
+          localStream.removeTrack(track);
+        });
+        
+        // Update video element
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = localStream;
+        }
+      }
+      setIsVideoEnabled(false);
     }
   };
 
@@ -458,9 +503,19 @@ const VoiceChatModal = ({ nickname, onClose }) => {
   useEffect(() => {
     startVoiceChat();
     return () => {
-      stopVoiceChat();
+      // Only cleanup when component unmounts, not on every render
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+      }
     };
-  }, [stopVoiceChat]);
+  }, [localStream]); // Include localStream in dependencies
+
+  // Separate effect to update video element when stream changes
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+    }
+  }, [localStream]);
 
   return (
     <div style={{
@@ -508,46 +563,96 @@ const VoiceChatModal = ({ nickname, onClose }) => {
         
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
           gap: '15px',
-          marginBottom: '20px'
+          marginBottom: '20px',
+          maxHeight: '400px',
+          overflowY: 'auto'
         }}>
+          {/* Local video cube */}
           <div style={{
             position: 'relative',
             backgroundColor: '#1e1e1e',
-            borderRadius: '8px',
-            overflow: 'hidden'
+            borderRadius: '12px',
+            overflow: 'hidden',
+            aspectRatio: '1',
+            minHeight: '150px',
+            border: '2px solid #007bff'
           }}>
-            <video
-              ref={localVideoRef}
-              autoPlay
-              playsInline
-              muted
-              style={{
+            {isVideoEnabled && localStream ? (
+              <video
+                ref={localVideoRef}
+                autoPlay
+                playsInline
+                muted
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  transform: 'scaleX(-1)'
+                }}
+              />
+            ) : (
+              <div style={{
                 width: '100%',
-                height: '250px',
-                objectFit: 'cover',
-                transform: 'scaleX(-1)'
-              }}
-            />
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: '#2c3e50',
+                color: 'white',
+                fontSize: '48px'
+              }}>
+                👤
+              </div>
+            )}
             <div style={{
               position: 'absolute',
-              bottom: '10px',
-              left: '10px',
-              right: '10px',
+              bottom: '8px',
+              left: '8px',
+              right: '8px',
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'center'
+              alignItems: 'center',
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              borderRadius: '6px',
+              padding: '4px 8px'
             }}>
-              <span style={{ color: 'white', fontSize: '14px', fontWeight: 'bold' }}>
+              <span style={{ color: 'white', fontSize: '12px', fontWeight: 'bold' }}>
                 You ({nickname})
               </span>
-              <div>
-                {isMuted && <span style={{ color: '#e74c3c', marginRight: '8px' }}>🔇</span>}
-                {!isVideoEnabled && <span style={{ color: '#f39c12' }}>📷</span>}
+              <div style={{ display: 'flex', gap: '4px' }}>
+                {isMuted && <span style={{ color: '#e74c3c', fontSize: '12px' }}>🔇</span>}
+                {!isVideoEnabled && <span style={{ color: '#f39c12', fontSize: '12px' }}>📷</span>}
               </div>
             </div>
           </div>
+
+          {/* Remote video cubes would go here when implemented */}
+          {/* Placeholder for additional users */}
+          {permissionsGranted && (
+            <div style={{
+              position: 'relative',
+              backgroundColor: '#34495e',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              aspectRatio: '1',
+              minHeight: '150px',
+              border: '2px dashed #7f8c8d',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#bdc3c7',
+              fontSize: '14px',
+              textAlign: 'center',
+              padding: '20px'
+            }}>
+              <div>
+                <div style={{ fontSize: '32px', marginBottom: '8px' }}>➕</div>
+                <div>Waiting for others to join...</div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div style={{
@@ -555,70 +660,131 @@ const VoiceChatModal = ({ nickname, onClose }) => {
           justifyContent: 'center',
           gap: '15px',
           padding: '20px',
-          backgroundColor: '#34495e',
-          borderRadius: '8px'
+          borderTop: '1px solid #444',
+          backgroundColor: '#1a1a1a'
         }}>
           <button
             onClick={toggleMute}
             style={{
-              padding: '15px 25px',
-              borderRadius: '50px',
+              padding: '12px 16px',
+              borderRadius: '25px',
               border: 'none',
               backgroundColor: isMuted ? '#e74c3c' : '#27ae60',
               color: 'white',
-              fontSize: '16px',
+              fontSize: '14px',
               fontWeight: 'bold',
               cursor: 'pointer',
-              transition: 'all 0.3s ease',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px'
+              gap: '8px',
+              minWidth: '120px',
+              justifyContent: 'center',
+              transition: 'all 0.3s ease',
+              transform: 'scale(1)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
             }}
+            onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
+            onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
           >
-            {isMuted ? '🔇' : '🎤'}
+            <span style={{ fontSize: '16px' }}>{isMuted ? '🔇' : '🎤'}</span>
             {isMuted ? 'Unmute' : 'Mute'}
           </button>
-          
+
           <button
             onClick={toggleVideo}
+            disabled={!permissionsGranted}
             style={{
-              padding: '15px 25px',
-              borderRadius: '50px',
+              padding: '12px 16px',
+              borderRadius: '25px',
               border: 'none',
-              backgroundColor: !isVideoEnabled ? '#e74c3c' : '#3498db',
+              backgroundColor: !permissionsGranted ? '#95a5a6' : isVideoEnabled ? '#27ae60' : '#e74c3c',
               color: 'white',
-              fontSize: '16px',
+              fontSize: '14px',
               fontWeight: 'bold',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
+              cursor: permissionsGranted ? 'pointer' : 'not-allowed',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px'
+              gap: '8px',
+              minWidth: '120px',
+              justifyContent: 'center',
+              transition: 'all 0.3s ease',
+              transform: 'scale(1)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+              opacity: !permissionsGranted ? 0.6 : 1
+            }}
+            onMouseEnter={(e) => {
+              if (permissionsGranted) e.target.style.transform = 'scale(1.05)';
+            }}
+            onMouseLeave={(e) => {
+              if (permissionsGranted) e.target.style.transform = 'scale(1)';
             }}
           >
-            {isVideoEnabled ? '📹' : '📷'}
+            <span style={{ fontSize: '16px' }}>{isVideoEnabled ? '📹' : '📷'}</span>
             {isVideoEnabled ? 'Camera On' : 'Camera Off'}
           </button>
-          
+
           <button
             onClick={handleClose}
             style={{
-              padding: '15px 25px',
-              borderRadius: '50px',
+              padding: '12px 20px',
+              borderRadius: '25px',
               border: 'none',
-              backgroundColor: '#e74c3c',
+              backgroundColor: '#dc3545',
               color: 'white',
-              fontSize: '16px',
+              fontSize: '14px',
               fontWeight: 'bold',
               cursor: 'pointer',
-              transition: 'all 0.3s ease',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px'
+              gap: '8px',
+              minWidth: '100px',
+              justifyContent: 'center',
+              transition: 'all 0.3s ease',
+              transform: 'scale(1)',
+              boxShadow: '0 4px 12px rgba(220, 53, 69, 0.4)'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.transform = 'scale(1.05)';
+              e.target.style.backgroundColor = '#c82333';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = 'scale(1)';
+              e.target.style.backgroundColor = '#dc3545';
             }}
           >
-            📞 Leave Call
+            <span style={{ fontSize: '16px' }}>📞</span>
+            Leave Call
           </button>
+        </div>
+
+        <div style={{
+          textAlign: 'center',
+          padding: '10px 20px',
+          backgroundColor: '#2c3e50',
+          borderRadius: '8px 8px 0 0',
+          borderBottom: '1px solid #444',
+          color: '#ecf0f1'
+        }}>
+          <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '18px' }}>
+            🎥 Voice Chat
+          </div>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            gap: '20px', 
+            fontSize: '12px',
+            color: '#bdc3c7'
+          }}>
+            <span>
+              🎤 Audio: {permissionsGranted ? (isMuted ? 'Muted' : 'Active') : 'Requesting...'}
+            </span>
+            <span>
+              📹 Video: {isVideoEnabled ? 'On' : 'Off'}
+            </span>
+            <span>
+              👥 Participants: 1
+            </span>
+          </div>
         </div>
 
         <div style={{
