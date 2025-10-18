@@ -445,48 +445,62 @@ const VoiceChatModal = ({ nickname, onClose }) => {
 
   const toggleVideo = async () => {
     if (!isVideoEnabled) {
-      // Request camera permission and add video track
+      // Request camera permission and create new stream with video
       try {
-        const videoStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: false
-        });
+        let newStream;
         
-        // Add video track to existing stream
-        if (localStream) {
-          const videoTrack = videoStream.getVideoTracks()[0];
-          localStream.addTrack(videoTrack);
-          
-          // Update video element
-          if (localVideoRef.current) {
-            localVideoRef.current.srcObject = localStream;
-          }
-        } else {
-          // If no stream exists, create new one with video
-          const fullStream = await navigator.mediaDevices.getUserMedia({
+        if (localStream && localStream.getAudioTracks().length > 0) {
+          // If we have an audio stream, create a new combined stream
+          newStream = await navigator.mediaDevices.getUserMedia({
             video: true,
             audio: true
           });
-          setLocalStream(fullStream);
-          if (localVideoRef.current) {
-            localVideoRef.current.srcObject = fullStream;
-          }
+          
+          // Stop the old stream
+          localStream.getTracks().forEach(track => track.stop());
+        } else {
+          // Create new stream with video only
+          newStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false
+          });
         }
+        
+        setLocalStream(newStream);
         setIsVideoEnabled(true);
+        
+        // Update video element
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = newStream;
+        }
       } catch (error) {
         console.error('Error accessing camera:', error);
         alert('Please allow camera access to enable video.');
       }
     } else {
-      // Disable video
+      // Disable video - create audio-only stream
       if (localStream) {
-        const videoTracks = localStream.getVideoTracks();
-        videoTracks.forEach(track => {
-          track.stop();
-          localStream.removeTrack(track);
-        });
+        try {
+          // Stop all tracks
+          localStream.getTracks().forEach(track => track.stop());
+          
+          // Create new audio-only stream if we had audio before
+          const audioTracks = localStream.getAudioTracks();
+          if (audioTracks.length > 0) {
+            const audioOnlyStream = await navigator.mediaDevices.getUserMedia({
+              audio: true,
+              video: false
+            });
+            setLocalStream(audioOnlyStream);
+          } else {
+            setLocalStream(null);
+          }
+        } catch (error) {
+          console.error('Error disabling video:', error);
+          setLocalStream(null);
+        }
         
-        // Update video element
+        // Clear video element
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = localStream;
         }
@@ -579,7 +593,7 @@ const VoiceChatModal = ({ nickname, onClose }) => {
             minHeight: '150px',
             border: '2px solid #007bff'
           }}>
-            {isVideoEnabled && localStream ? (
+            {isVideoEnabled && localStream && localStream.getVideoTracks().length > 0 ? (
               <video
                 ref={localVideoRef}
                 autoPlay
@@ -597,13 +611,21 @@ const VoiceChatModal = ({ nickname, onClose }) => {
                 width: '100%',
                 height: '100%',
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
                 backgroundColor: '#2c3e50',
-                color: 'white',
-                fontSize: '48px'
+                color: '#ecf0f1',
+                fontSize: '48px',
+                textAlign: 'center'
               }}>
-                👤
+                <div style={{ marginBottom: '10px' }}>👤</div>
+                <div style={{ fontSize: '14px', fontWeight: 'bold' }}>
+                  Camera Off
+                </div>
+                <div style={{ fontSize: '12px', color: '#bdc3c7', marginTop: '5px' }}>
+                  Click "Camera Off" to enable
+                </div>
               </div>
             )}
             <div style={{
