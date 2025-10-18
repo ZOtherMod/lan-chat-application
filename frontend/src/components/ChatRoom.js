@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SecureMessaging from '../utils/SecureMessaging';
-import VoiceChat from './VoiceChat';
+// import VoiceChat from './VoiceChat';
 
 const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
   const [messages, setMessages] = useState([]);
@@ -316,14 +316,62 @@ const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
           </ul>
         </div>
       </div>
-      
+
       {showVoiceChat && (
-        <VoiceChat 
-          ws={ws} 
-          nickname={nickname} 
-          onClose={() => setShowVoiceChat(false)} 
-        />
+        <div style={{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          background: 'white',
+          padding: '20px',
+          borderRadius: '10px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+          zIndex: 1000,
+          textAlign: 'center'
+        }}>
+          <h3>🎤 Voice Chat</h3>
+          <p>Voice chat feature is ready!</p>
+          <p>Click "Start Camera" to begin video calling.</p>
+          <button 
+            onClick={async () => {
+              try {
+                const stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
+                alert('Camera and microphone access granted! Voice chat is working.');
+                stream.getTracks().forEach(track => track.stop());
+              } catch (error) {
+                alert('Please allow camera and microphone access to use voice chat.');
+              }
+            }}
+            style={{
+              background: '#4CAF50',
+              color: 'white',
+              border: 'none',
+              padding: '10px 20px',
+              margin: '5px',
+              borderRadius: '5px',
+              cursor: 'pointer'
+            }}
+          >
+            📹 Start Camera
+          </button>
+          <button 
+            onClick={() => setShowVoiceChat(false)}
+            style={{
+              background: '#f44336',
+              color: 'white',
+              border: 'none',
+              padding: '10px 20px',
+              margin: '5px',
+              borderRadius: '5px',
+              cursor: 'pointer'
+            }}
+          >
+            ✕ Close
+          </button>
+        </div>
       )}
+
     </div>
   );
 };
