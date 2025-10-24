@@ -10,6 +10,15 @@ const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
   const [encryptionPassword, setEncryptionPassword] = useState('');
   const [showEncryptionSetup, setShowEncryptionSetup] = useState(false);
   const [showVoiceChat, setShowVoiceChat] = useState(false);
+  
+  // Matchmaking states
+  const [inMatchmakingQueue, setInMatchmakingQueue] = useState(false);
+  const [queuePosition, setQueuePosition] = useState(0);
+  const [totalInQueue, setTotalInQueue] = useState(0);
+  const [inRoom, setInRoom] = useState(false);
+  const [roomInfo, setRoomInfo] = useState(null);
+  // const [isInMatchMode, setIsInMatchMode] = useState(false);
+  
   const messagesEndRef = useRef(null);
   const secureMessaging = useRef(new SecureMessaging());
 
@@ -116,6 +125,79 @@ const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
             timestamp: new Date().toISOString()
           }]);
           break;
+
+        // Matchmaking message handlers
+        case 'matchmaking_joined':
+          setInMatchmakingQueue(true);
+          setQueuePosition(data.queue_position);
+          setMessages(prev => [...prev, {
+            type: 'system',
+            content: data.message,
+            timestamp: new Date().toISOString()
+          }]);
+          break;
+
+        case 'matchmaking_left':
+          setInMatchmakingQueue(false);
+          setQueuePosition(0);
+          setTotalInQueue(0);
+          setMessages(prev => [...prev, {
+            type: 'system',
+            content: data.message,
+            timestamp: new Date().toISOString()
+          }]);
+          break;
+
+        case 'queue_update':
+          setQueuePosition(data.position);
+          setTotalInQueue(data.total_in_queue);
+          break;
+
+        case 'match_found':
+          setInMatchmakingQueue(false);
+          setInRoom(true);
+          // setIsInMatchMode(true);
+          setRoomInfo({
+            room_id: data.room_id,
+            room_name: data.room_name,
+            opponent: data.opponent
+          });
+          setMessages(prev => [...prev, {
+            type: 'system',
+            content: `🎮 ${data.message} You're now chatting with ${data.opponent}!`,
+            timestamp: new Date().toISOString(),
+            isMatch: true
+          }]);
+          break;
+
+        case 'room_message':
+          setMessages(prev => [...prev, {
+            type: 'chat',
+            nickname: data.nickname,
+            content: data.content,
+            timestamp: data.timestamp,
+            isOwn: data.nickname === nickname,
+            encrypted: false,
+            isRoomMessage: true
+          }]);
+          break;
+
+        case 'opponent_left':
+          setMessages(prev => [...prev, {
+            type: 'system',
+            content: `😔 ${data.message}`,
+            timestamp: data.timestamp,
+            isMatch: true
+          }]);
+          break;
+
+        case 'system_message':
+          setMessages(prev => [...prev, {
+            type: 'system',
+            content: data.message,
+            timestamp: data.timestamp
+          }]);
+          break;
           
         default:
           console.log('Unknown message type:', data.type);
@@ -133,6 +215,34 @@ const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
     };
   }, [ws, nickname, encryptionEnabled, encryptionPassword]);
 
+  // Matchmaking functions
+  const joinMatchmaking = () => {
+    if (ws) {
+      ws.send(JSON.stringify({
+        type: 'join_matchmaking'
+      }));
+    }
+  };
+
+  const leaveMatchmaking = () => {
+    if (ws) {
+      ws.send(JSON.stringify({
+        type: 'leave_matchmaking'
+      }));
+    }
+  };
+
+  const leaveRoom = () => {
+    if (ws) {
+      ws.send(JSON.stringify({
+        type: 'leave_room'
+      }));
+    }
+    setInRoom(false);
+    setRoomInfo(null);
+    // setIsInMatchMode(false);
+  };
+
   const sendMessage = (e) => {
     e.preventDefault();
     const message = inputMessage.trim();
@@ -142,21 +252,24 @@ const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
         // Validate and sanitize input
         const sanitizedMessage = secureMessaging.current.sanitizeInput(message);
         
-        if (encryptionEnabled && encryptionPassword) {
-          // Send encrypted message
+        // Determine message type based on room status
+        const messageType = inRoom ? 'room_message' : 'chat_message';
+        
+        if (encryptionEnabled && encryptionPassword && !inRoom) {
+          // Send encrypted message (only for global chat)
           const encryptedData = secureMessaging.current.encryptMessage(
             sanitizedMessage, 
             encryptionPassword
           );
           
           ws.send(JSON.stringify({
-            type: 'chat_message',
+            type: 'encrypted_chat_message',
             encrypted_content: encryptedData
           }));
         } else {
-          // Send plain message
+          // Send plain message (room or global)
           ws.send(JSON.stringify({
-            type: 'chat_message',
+            type: messageType,
             content: sanitizedMessage
           }));
         }
@@ -215,9 +328,38 @@ const ChatRoom = ({ ws, nickname, serverUrl, onDisconnect }) => {
           <div className="chat-info">
             Connected to {getServerAddress(serverUrl)} as {nickname}
             {encryptionEnabled && <span className="encryption-status"> 🔒 Encrypted</span>}
+            {inMatchmakingQueue && <span className="match-status"> ⏱️ In Queue</span>}
+            {inRoom && roomInfo && <span className="match-status"> 🎮 Match vs {roomInfo.opponent}</span>}
           </div>
         </div>
         <div className="header-controls">
+          {!inRoom && !inMatchmakingQueue && (
+            <button 
+              className="btn btn-primary" 
+              onClick={joinMatchmaking}
+              title="Find a match"
+            >
+              🎮 Find Match
+            </button>
+          )}
+          {inMatchmakingQueue && (
+            <button 
+              className="btn btn-warning" 
+              onClick={leaveMatchmaking}
+              title="Leave queue"
+            >
+              ⏱️ In Queue ({queuePosition}/{totalInQueue})
+            </button>
+          )}
+          {inRoom && (
+            <button 
+              className="btn btn-danger" 
+              onClick={leaveRoom}
+              title="Leave match room"
+            >
+              🚪 Leave Room
+            </button>
+          )}
           <button 
             className="btn btn-encryption" 
             onClick={() => setShowEncryptionSetup(!showEncryptionSetup)}

@@ -94,6 +94,12 @@ class ChatServer:
         self.room_key = None  # Shared encryption key for the room
         self.failed_attempts = {}  # Track failed authentication attempts
         
+        # Matchmaking system
+        self.matchmaking_queue = []  # List of users waiting for match
+        self.active_rooms = {}  # room_id -> {"users": [ws1, ws2], "room_name": str}
+        self.user_rooms = {}  # websocket -> room_id mapping
+        self.room_counter = 0
+        
     async def register_client(self, websocket):
         """Register a new client"""
         self.clients.add(websocket)
@@ -104,6 +110,9 @@ class ChatServer:
         self.clients.discard(websocket)
         nickname = self.nicknames.pop(websocket, "Unknown")
         logger.info(f"Client {nickname} disconnected. Total clients: {len(self.clients)}")
+        
+        # Clean up matchmaking and room data
+        await self.cleanup_user_matchmaking_data(websocket)
         
         # Notify other clients about user leaving
         if nickname != "Unknown":
@@ -245,6 +254,24 @@ class ChatServer:
                     "users": user_list
                 }))
                 
+            # Matchmaking message handlers
+            elif message_type == "join_matchmaking":
+                await self.join_matchmaking_queue(websocket)
+                
+            elif message_type == "leave_matchmaking":
+                await self.leave_matchmaking_queue(websocket)
+                
+            elif message_type == "leave_room":
+                await self.leave_room(websocket)
+                
+            elif message_type == "room_message":
+                content = data.get("content", "").strip()
+                if content:
+                    await self.send_room_message(websocket, content)
+                    
+            elif message_type == "get_room_info":
+                await self.get_room_info(websocket)
+                
         except json.JSONDecodeError:
             await websocket.send(json.dumps({
                 "type": "error",
@@ -307,6 +334,251 @@ class ChatServer:
             "key": self.room_key.hex()
         }))
     
+    # Matchmaking System Methods
+    async def join_matchmaking_queue(self, websocket):
+        """Add user to matchmaking queue"""
+        nickname = self.nicknames.get(websocket)
+        if not nickname:
+            await websocket.send(json.dumps({
+                "type": "error",
+                "message": "Please set a nickname first"
+            }))
+            return
+            
+        # Check if user is already in queue
+        if websocket in self.matchmaking_queue:
+            await websocket.send(json.dumps({
+                "type": "error", 
+                "message": "You are already in the matchmaking queue"
+            }))
+            return
+            
+        # Check if user is already in a room
+        if websocket in self.user_rooms:
+            await websocket.send(json.dumps({
+                "type": "error",
+                "message": "You are already in a match room"
+            }))
+            return
+            
+        # Add to queue
+        self.matchmaking_queue.append(websocket)
+        logger.info(f"User {nickname} joined matchmaking queue. Queue size: {len(self.matchmaking_queue)}")
+        
+        await websocket.send(json.dumps({
+            "type": "matchmaking_joined",
+            "queue_position": len(self.matchmaking_queue),
+            "message": f"Joined matchmaking queue (position {len(self.matchmaking_queue)})"
+        }))
+        
+        # Try to create a match
+        await self.try_create_match()
+    
+    async def leave_matchmaking_queue(self, websocket):
+        """Remove user from matchmaking queue"""
+        if websocket in self.matchmaking_queue:
+            self.matchmaking_queue.remove(websocket)
+            nickname = self.nicknames.get(websocket, "Unknown")
+            logger.info(f"User {nickname} left matchmaking queue. Queue size: {len(self.matchmaking_queue)}")
+            
+            await websocket.send(json.dumps({
+                "type": "matchmaking_left",
+                "message": "Left matchmaking queue"
+            }))
+            
+            # Update queue positions for remaining users
+            await self.update_queue_positions()
+    
+    async def try_create_match(self):
+        """Try to create a match from queue"""
+        if len(self.matchmaking_queue) >= 2:
+            # Take first two users from queue
+            user1 = self.matchmaking_queue.pop(0)
+            user2 = self.matchmaking_queue.pop(0)
+            
+            # Create new room
+            self.room_counter += 1
+            room_id = f"match_{self.room_counter}"
+            room_name = f"Match Room {self.room_counter}"
+            
+            # Set up room
+            self.active_rooms[room_id] = {
+                "users": [user1, user2],
+                "room_name": room_name,
+                "created_at": datetime.now().isoformat()
+            }
+            
+            # Map users to room
+            self.user_rooms[user1] = room_id
+            self.user_rooms[user2] = room_id
+            
+            # Get nicknames
+            nickname1 = self.nicknames.get(user1, "Player 1")
+            nickname2 = self.nicknames.get(user2, "Player 2")
+            
+            logger.info(f"Match created: {nickname1} vs {nickname2} in {room_name}")
+            
+            # Notify both users about the match
+            match_message = {
+                "type": "match_found",
+                "room_id": room_id,
+                "room_name": room_name,
+                "opponent": "",
+                "message": "Match found! You've been placed in a private room."
+            }
+            
+            # Send to user1 with user2's nickname as opponent
+            match_message["opponent"] = nickname2
+            await user1.send(json.dumps(match_message))
+            
+            # Send to user2 with user1's nickname as opponent
+            match_message["opponent"] = nickname1
+            await user2.send(json.dumps(match_message))
+            
+            # Send welcome message to the room
+            await self.broadcast_to_room(room_id, {
+                "type": "system_message",
+                "message": f"Welcome to {room_name}! {nickname1} and {nickname2} have been matched.",
+                "timestamp": datetime.now().isoformat()
+            })
+            
+            # Update queue positions for remaining users
+            await self.update_queue_positions()
+    
+    async def leave_room(self, websocket):
+        """Remove user from their current room"""
+        room_id = self.user_rooms.get(websocket)
+        if not room_id:
+            return
+            
+        nickname = self.nicknames.get(websocket, "Unknown")
+        room = self.active_rooms.get(room_id)
+        
+        if room:
+            # Remove user from room
+            if websocket in room["users"]:
+                room["users"].remove(websocket)
+                
+            # Notify other user in room
+            await self.broadcast_to_room(room_id, {
+                "type": "opponent_left",
+                "message": f"{nickname} has left the room",
+                "timestamp": datetime.now().isoformat()
+            }, exclude=websocket)
+            
+            # If room is empty, remove it
+            if len(room["users"]) == 0:
+                del self.active_rooms[room_id]
+                logger.info(f"Room {room_id} deleted (empty)")
+            
+        # Remove user from room mapping
+        del self.user_rooms[websocket]
+        logger.info(f"User {nickname} left room {room_id}")
+    
+    async def broadcast_to_room(self, room_id, message, exclude=None):
+        """Broadcast message to all users in a specific room"""
+        room = self.active_rooms.get(room_id)
+        if not room:
+            return
+            
+        message_str = json.dumps(message)
+        disconnected = set()
+        
+        for websocket in room["users"]:
+            if websocket == exclude:
+                continue
+                
+            try:
+                await websocket.send(message_str)
+            except websockets.exceptions.ConnectionClosed:
+                disconnected.add(websocket)
+        
+        # Clean up disconnected clients from room
+        for websocket in disconnected:
+            if websocket in room["users"]:
+                room["users"].remove(websocket)
+            if websocket in self.user_rooms:
+                del self.user_rooms[websocket]
+    
+    async def send_room_message(self, websocket, content):
+        """Send message to room (only room members can see it)"""
+        room_id = self.user_rooms.get(websocket)
+        if not room_id:
+            await websocket.send(json.dumps({
+                "type": "error",
+                "message": "You are not in a room"
+            }))
+            return
+            
+        nickname = self.nicknames.get(websocket, "Unknown")
+        
+        # Broadcast to room members only
+        await self.broadcast_to_room(room_id, {
+            "type": "room_message",
+            "room_id": room_id,
+            "nickname": nickname,
+            "content": content,
+            "timestamp": datetime.now().isoformat()
+        })
+    
+    async def update_queue_positions(self):
+        """Update queue positions for all users in queue"""
+        for i, websocket in enumerate(self.matchmaking_queue):
+            await websocket.send(json.dumps({
+                "type": "queue_update",
+                "position": i + 1,
+                "total_in_queue": len(self.matchmaking_queue)
+            }))
+    
+    async def get_room_info(self, websocket):
+        """Get information about user's current room"""
+        room_id = self.user_rooms.get(websocket)
+        if not room_id:
+            await websocket.send(json.dumps({
+                "type": "room_info",
+                "in_room": False
+            }))
+            return
+            
+        room = self.active_rooms.get(room_id)
+        if not room:
+            # Clean up stale room mapping
+            del self.user_rooms[websocket]
+            await websocket.send(json.dumps({
+                "type": "room_info", 
+                "in_room": False
+            }))
+            return
+            
+        # Get room members' nicknames
+        members = []
+        for user_ws in room["users"]:
+            nickname = self.nicknames.get(user_ws, "Unknown")
+            members.append(nickname)
+            
+        await websocket.send(json.dumps({
+            "type": "room_info",
+            "in_room": True,
+            "room_id": room_id,
+            "room_name": room["room_name"],
+            "members": members,
+            "created_at": room["created_at"]
+        }))
+        
+    async def cleanup_user_matchmaking_data(self, websocket):
+        """Clean up all matchmaking and room data for a disconnected user"""
+        nickname = self.nicknames.get(websocket, "Unknown")
+        
+        # Remove from matchmaking queue
+        if websocket in self.matchmaking_queue:
+            self.matchmaking_queue.remove(websocket)
+            logger.info(f"Removed {nickname} from matchmaking queue due to disconnect")
+            await self.update_queue_positions()
+        
+        # Remove from active room
+        if websocket in self.user_rooms:
+            await self.leave_room(websocket)
+
     async def validate_client_input(self, websocket, data):
         """Validate client input for security"""
         client_ip = websocket.remote_address[0] if websocket.remote_address else "unknown"
